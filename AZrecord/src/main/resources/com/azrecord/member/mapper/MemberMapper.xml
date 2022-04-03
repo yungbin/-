@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.azrecord.member.mapper.MemberMapper">
+	
+	<!-- 1. 회원 리스트 -->
+	<select id="list" resultType="com.azrecord.member.vo.MemberVO">
+		select id, nickname, name, birth, gender, tel, email, status, gradeNo, gradeName, photo
+		from(
+			select rownum rnum, id, nickname, name, birth, gender, tel, email, status, gradeNo, gradeName, photo	
+			from(
+				select m.id, m.nickname, m.name, m.birth, m.gender, m.tel, m.email, m.status, m.gradeNo, g.gradeName, m.photo
+				from member m, grade g
+				where m.gradeNo = g.gradeNo
+				order by id
+			)
+		)where rnum between #{startRow} and #{endRow}
+	</select>
+	<!-- 1-1. 페이지 갯수 세기 -->
+	<select id="getTotalRow" resultType="long">
+		select count(*) from member
+	</select>
+	<!-- 2. 회원 보기 -->
+	<select id="view" resultType="com.azrecord.member.vo.MemberVO">
+		select m.id, m.nickname, m.name, m.birth, m.gender, m.tel, m.email, m.status,
+		 m.gradeNo, g.gradeName, m.photo, m.regDate
+		from member m, grade g
+		where (id = #{id}) and (m.gradeNo = g.gradeNo)
+	</select>
+	<!-- 3. 회원 가입 -->
+	<insert id="write">
+		insert into member(id, pw, nickname, name, gender, birth, tel, email, photo)
+		values(#{id}, #{pw}, #{nickname}, #{name}, #{gender}, #{birth}, #{tel}, #{email}, #{photo})
+	</insert>
+	<!-- 4. 회원 수정 -->
+	<update id="update">
+		update member
+		set nickname = #{nickname}, name = #{name}, gender = #{gender}, birth = #{birth}, tel = #{tel}, email = #{email},
+		photo = #{photo}
+		where id = #{id} AND pw = #{pw}
+	</update>
+	<!-- 5. 회원 탈퇴 -->
+	<delete id="delete">
+		delete from member
+		where id = #{id} and pw = #{pw}
+	</delete>
+	<!-- // 6. 로그인 처리 -->
+	<select id="login" resultType="com.azrecord.member.vo.LoginVO">
+		select m.id, m.nickname, m.name, m.gradeNo, g.gradeName, m.photo
+		from member m, grade g
+		where (id = #{id} and pw = #{pw}) and (m.gradeNo = g.gradeNo)
+	</select>
+	<!-- // 7. 아이디 중복 체크 -->
+	<select id="idCheck" resultType="java.lang.String">
+		select id from member
+		where id = #{id}
+	</select>
+	<!-- // 7. 닉네임 중복 체크 -->
+	<select id="nickCheck" resultType="java.lang.String">
+		select nickname from member
+		where nickname = #{nickname}
+	</select>
+	<!-- // 8. 상태 변경 -->
+	<update id="changeStatus">
+		update member
+		set status = #{status}
+		where id = #{id}
+	</update>
+	<!-- // 9. 등급 변경 -->
+	<update id="changeGradeNo">
+		update member
+		set gradeNo = #{gradeNo}
+		where id = #{id}
+	</update>
+</mapper>

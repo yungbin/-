@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.azrecord.latest.mapper.LatestMapper">
+	
+	<!-- 1. 리스트 -->
+	<select id="list" resultType="com.azrecord.latest.vo.LatestVO">
+		select code, songName, songImage, nickname, genre, recom
+		from(
+			select rownum rnum, code, songName, songImage, nickname, genre, recom
+			from(
+				select code, songName, songImage, nickname, genre, recom
+				from song
+				where 1 = 1
+				<include refid="search"/>
+				<include refid="searchPeriod"/>
+				order by writeDate desc
+			)
+		)where rnum between #{startRow} and #{endRow}
+	</select>
+	<!-- 1-1. 메인 리스트 -->
+	<select id="latestList" resultType="com.azrecord.latest.vo.LatestVO">
+		select code, songName, songImage, nickname, recom, hit
+		from(
+			select rownum rnum, code, songName, songImage, nickname, recom, hit
+			from(
+				select code, songName, songImage, nickname, recom, hit
+				from song
+				order by writeDate desc
+			)
+		)where rnum between #{startRow} and #{endRow}
+	</select>
+	<!-- 1-2. 인기차트 리스트 -->
+	<select id="chartList" resultType="com.azrecord.latest.vo.LatestVO">
+		select rnum, code, songName, songImage, nickname, recom, hit
+		from(
+			select rownum rnum, code, songName, songImage, nickname, recom, hit
+			from(
+				select code, songName, songImage, nickname, recom, hit
+				from song
+				<include refid="chartPeriod"/>
+			)
+		)where rnum between #{startRow} and #{endRow}
+	</select>
+	<!-- 1-3. 페이지 갯수 세기 -->
+	<select id="getTotalRow" resultType="long">
+		select count(*) from song
+		where 1 = 1
+		<include refid="search"/>
+		<include refid="searchPeriod"/>
+	</select>
+	<!-- 1-4. 차트 페이지의 갯수 세기 -->
+	<select id="getTotalChartRow" resultType="long">
+		select count(*) from song
+	</select>
+	<!-- 검색 조건 처리를 위한 태그 - 부분 태그 : sql :: 동적 쿼리 작성-->
+	<sql id="search">
+		<if test="word != null and word != ''.toString">
+			and(
+			<!-- 문자열 글자가 하나일 때 문자로 인식해서 tostring() 써야한다. -->
+			<if test="key == 'n'.toString()">
+				songName like '%' || #{word} || '%'
+			</if>
+			<if test="key == 'a'.toString()">
+				nickname like '%' || #{word} || '%'
+			</if>
+			<if test="key == 'c'.toString()">
+				content like '%' || #{word} || '%'
+			</if>
+			<if test="key == 'na'">
+				songName like '%' || #{word} || '%'
+				or nickname like '%' || #{word} || '%'
+			</if>
+			<if test="key == 'nc'">
+				songName like '%' || #{word} || '%'
+				or content like '%' || #{word} || '%'
+			</if>
+			<if test="key == 'ac'">
+				nickname like '%' || #{word} || '%'
+				or content like '%' || #{word} || '%'
+			</if>
+			<if test="key == 'nac'">
+				songName like '%' || #{word} || '%'
+				or nickname like '%' || #{word} || '%'
+				or content like '%' || #{word} || '%'
+			</if>
+			)
+		</if>
+	</sql>
+	<!-- 장르에 따른 페이지 정보 넘기기 -->
+	<sql id="searchPeriod">
+		<if test="period != null and period != ''.toString and period != 'pre'">
+		and(
+		<if test="period == 'ballad'">
+			<![CDATA[
+			genre = 'ballad'
+			]]>
+		</if>
+		<if test="period == 'rock'">
+			<![CDATA[
+			genre = 'rock'
+			]]>
+		</if>
+		<if test="period == 'electronic'">
+			<![CDATA[
+			genre = 'electronic'
+			]]>
+		</if>
+		<if test="period == 'jazz'">
+			<![CDATA[
+			genre = 'jazz'
+			]]>
+		</if>
+		<if test="period == 'pop'">
+			<![CDATA[
+			genre = 'pop'
+			]]>
+		</if>
+		<if test="period == 'chill'">
+			<![CDATA[
+			genre = 'chill'
+			]]>
+		</if>
+		<if test="period == 'all'">
+			<![CDATA[
+			1 = 1
+			]]>
+		</if>
+		)
+		</if>
+	</sql>
+	<!-- 차트에 따른 페이지 정보 넘기기 -->
+	<sql id="chartPeriod">
+		<if test="period != null and word != ''.toString and period != 'pre'">
+			<if test="period == 'hit'">
+				order by hit desc
+			</if>
+			<if test="period == 'recom'">
+				order by recom desc
+			</if>
+		</if>
+	</sql>
+	<!-- 2. 음원 보기 -->
+	<select id="view" resultType="com.azrecord.latest.vo.LatestVO">
+		select code, id, songName, songImage, song, nickname, genre, writeDate, content, recom, hit
+		from song
+		where code = #{code} 
+	</select>
+	<!-- 2-1. 조회수 증가 -->
+	<update id="increase">
+		update song set hit = hit + 1
+		where code = #{code}
+	</update>
+	<!-- 3. 음원 등록 -->
+	<insert id="write">
+		insert into song(code, id, songName, songImage, song, nickname, genre, content)
+		values(song_seq.nextval, #{id}, #{songName}, #{songImage}, #{song}, #{nickname}, #{genre}, #{content})
+	</insert>
+	<!-- 4. 음원 수정 -->
+	<update id="update">
+		update song set id = #{id}, songName = #{songName}, song = #{song}, songImage = #{songImage},
+		nickname = #{nickname}, genre = #{genre}, content = #{content}
+		where code = #{code}
+	</update>
+	<!-- 5. 음원 삭제 -->
+	<delete id="delete">
+		delete from song
+		where code = #{code}
+	</delete>
+
+</mapper>
